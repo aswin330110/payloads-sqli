@@ -4,7 +4,34 @@
 
 A **Google-level** vulnerability scanner designed for top-tier bug bounty programs (Google VRP, Apple Security Bounty, Microsoft, Facebook). Features advanced multi-stage validation, confidence scoring, and a **zero false positive guarantee** through rigorous testing.
 
-**✨ New in v2.0**: Advanced validation engine with 95%+ confidence requirement for all findings.
+**✨ New in v2.0**:
+- Advanced validation engine with 95%+ confidence requirement
+- **🌐 One-Click Web Interface** with automated scanning
+- Real-time progress tracking and beautiful dashboard
+- No manual confirmations needed - fully automated!
+
+## 🌟 Quick Start - Web Interface (Recommended)
+
+**One command to launch:**
+
+```bash
+# Linux/Mac
+./launch-web.sh
+
+# Windows
+launch-web.bat
+```
+
+**Then:**
+1. Browser opens automatically at http://localhost:5000
+2. Enter target URL
+3. Click "Start Automated Scan"
+4. Watch real-time progress
+5. View results instantly with 95%+ confidence scores!
+
+**✨ No coding required - just click and scan!**
+
+See [WEB_INTERFACE.md](WEB_INTERFACE.md) for complete web interface documentation.
 
 ## ⚠️ LEGAL WARNING
 
@@ -98,25 +125,39 @@ The `modules/validation_engine.py` provides:
 - Python 3.7+
 - Required packages (see requirements.txt)
 
-## 🚀 Installation
+## 🚀 Installation & Usage
+
+### Option 1: Web Interface (Easiest - Recommended)
+
+**One-click launch:**
+```bash
+# Linux/Mac
+./launch-web.sh
+
+# Windows
+launch-web.bat
+```
+
+The script automatically:
+- ✅ Installs dependencies (Flask, Flask-CORS, requests)
+- ✅ Starts web server
+- ✅ Opens browser at http://localhost:5000
+- ✅ Ready to scan with beautiful UI!
+
+**Features:**
+- 🎨 Professional gradient dashboard
+- 📊 Real-time progress tracking
+- 🔍 Live vulnerability detection
+- ✅ One-click automated scanning
+- 📱 No terminal knowledge needed
+
+### Option 2: Command Line Interface
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/payloads-sqli.git
-cd payloads-sqli
-
 # Install dependencies
 pip3 install -r requirements.txt
 
-# Make scanner executable
-chmod +x scanner.py
-```
-
-## 📖 Usage
-
-### Basic Usage
-
-```bash
+# Basic scan
 python3 scanner.py --target https://example.com --scope bug-bounty
 ```
 
