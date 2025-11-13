@@ -26,6 +26,11 @@ wheels/
 .installed.cfg
 *.egg
 
+# Flask
+instance/
+.webassets-cache
+.env
+
 # Virtual environments
 venv/
 ENV/
