@@ -1,0 +1,49 @@
+{
+  "scanner_config": {
+    "user_agent": "SecurityScanner/1.0 (Authorized Bug Bounty Testing)",
+    "default_timeout": 10,
+    "default_threads": 5,
+    "max_retries": 3,
+    "verify_ssl": false
+  },
+  "scan_options": {
+    "enable_sql_injection": true,
+    "enable_xss": true,
+    "enable_ssrf": true,
+    "enable_open_redirect": true,
+    "enable_header_injection": true,
+    "enable_info_disclosure": true
+  },
+  "payload_limits": {
+    "sql_injection_max_payloads": 30,
+    "xss_max_payloads": 15,
+    "ssrf_max_payloads": 10,
+    "redirect_max_payloads": 15
+  },
+  "reporting": {
+    "output_format": "json",
+    "save_reports": true,
+    "report_directory": "./reports/",
+    "include_screenshots": false
+  },
+  "bug_bounty_programs": {
+    "google": {
+      "name": "Google VRP",
+      "url": "https://bughunters.google.com/",
+      "scope_url": "https://bughunters.google.com/about/rules/6625378258649088/google-and-alphabet-vulnerability-reward-program-vrp-rules",
+      "max_reward": 31337
+    },
+    "apple": {
+      "name": "Apple Security Bounty",
+      "url": "https://security.apple.com/bounty/",
+      "scope_url": "https://security.apple.com/bounty/",
+      "max_reward": 1000000
+    },
+    "microsoft": {
+      "name": "Microsoft Bug Bounty",
+      "url": "https://www.microsoft.com/en-us/msrc/bounty",
+      "scope_url": "https://www.microsoft.com/en-us/msrc/bounty",
+      "max_reward": 100000
+    }
+  }
+}
